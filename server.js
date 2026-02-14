@@ -1,15 +1,13 @@
-﻿const express = require("express");
+const express = require("express");
 const session = require("express-session");
+const bcrypt = require("bcryptjs");
+const connectPgSimple = require("connect-pg-simple");
 const { Pool } = require("pg");
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-const USERS = {
-  admin1: "123",
-  admin2: "456",
-};
+const BCRYPT_ROUNDS = Number.parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
 
 function shouldUseSsl(connectionString) {
   if (!connectionString) return false;
@@ -39,7 +37,18 @@ const pool = new Pool({
     : false,
 });
 
+const PgSessionStore = connectPgSimple(session);
+
 async function initDatabase() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS submissions (
       id SERIAL PRIMARY KEY,
@@ -51,6 +60,17 @@ async function initDatabase() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+
+  const admin1Hash = await bcrypt.hash("123", BCRYPT_ROUNDS);
+  const admin2Hash = await bcrypt.hash("456", BCRYPT_ROUNDS);
+
+  await pool.query(
+    `INSERT INTO users (username, password_hash)
+     VALUES ($1, $2), ($3, $4)
+     ON CONFLICT (username) DO UPDATE
+     SET password_hash = EXCLUDED.password_hash`,
+    ["admin1", admin1Hash, "admin2", admin2Hash]
+  );
 }
 
 app.set("view engine", "ejs");
@@ -61,8 +81,17 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev_secret_change_me",
+    store: new PgSessionStore({
+      pool,
+      tableName: "user_sessions",
+      createTableIfMissing: true,
+    }),
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 8,
+      secure: process.env.NODE_ENV === "production",
+    },
   })
 );
 
@@ -87,16 +116,26 @@ app.get("/login", (req, res) => {
   return res.render("login", { error: null });
 });
 
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  if (!USERS[username] || USERS[username] !== password) {
+  const userResult = await pool.query(
+    "SELECT id, username, password_hash FROM users WHERE username = $1",
+    [username]
+  );
+
+  const user = userResult.rows[0];
+  const isValidPassword = user
+    ? await bcrypt.compare(password, user.password_hash)
+    : false;
+
+  if (!user || !isValidPassword) {
     return res.status(401).render("login", {
       error: "Login ou senha invalidos.",
     });
   }
 
-  req.session.user = { username };
+  req.session.user = { id: user.id, username: user.username };
   return res.redirect("/form");
 });
 
