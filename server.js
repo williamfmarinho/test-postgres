@@ -11,9 +11,32 @@ const USERS = {
   admin2: "456",
 };
 
+function shouldUseSsl(connectionString) {
+  if (!connectionString) return false;
+
+  try {
+    const url = new URL(connectionString);
+    const sslMode = (url.searchParams.get("sslmode") || "").toLowerCase();
+    const isLocalHost =
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1";
+
+    if (sslMode === "disable" || isLocalHost) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: shouldUseSsl(process.env.DATABASE_URL)
+    ? { rejectUnauthorized: false }
+    : false,
 });
 
 async function initDatabase() {
