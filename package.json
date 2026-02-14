@@ -1,0 +1,18 @@
+﻿{
+  "name": "railway-postgres-form",
+  "version": "1.0.0",
+  "description": "App simples com login e formulario salvando no PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.13.1"
+  }
+}

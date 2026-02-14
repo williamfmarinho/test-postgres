@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Formulario</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>Formulario</h1>
+        <p>Logado como <strong><%= username %></strong></p>
+      </div>
+
+      <form method="POST" action="/logout">
+        <button type="submit" class="secondary">Sair</button>
+      </form>
+    </header>
+
+    <% if (error) { %>
+      <p class="error"><%= error %></p>
+    <% } %>
+
+    <section class="card">
+      <h2>Enviar dados</h2>
+      <form method="POST" action="/submit" class="form-grid">
+        <label>
+          Campo texto (string)
+          <input type="text" name="textValue" required />
+        </label>
+
+        <label>
+          Campo numero
+          <input type="number" name="numberValue" required />
+        </label>
+
+        <label>
+          Categoria
+          <select name="categoryValue" required>
+            <option value="">Selecione</option>
+            <option value="Opcao A">Opcao A</option>
+            <option value="Opcao B">Opcao B</option>
+            <option value="Opcao C">Opcao C</option>
+            <option value="Opcao D">Opcao D</option>
+          </select>
+        </label>
+
+        <label class="inline">
+          <input type="checkbox" name="acceptedTerms" />
+          Aceita os termos? (boolean)
+        </label>
+
+        <button type="submit">Enviar</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Ultimos envios</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Usuario</th>
+              <th>Texto</th>
+              <th>Numero</th>
+              <th>Categoria</th>
+              <th>Termos</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!submissions.length) { %>
+              <tr>
+                <td colspan="7">Nenhum envio ainda.</td>
+              </tr>
+            <% } %>
+
+            <% submissions.forEach((item) => { %>
+              <tr>
+                <td><%= item.id %></td>
+                <td><%= item.username %></td>
+                <td><%= item.text_value %></td>
+                <td><%= item.number_value %></td>
+                <td><%= item.category_value %></td>
+                <td><%= item.accepted_terms ? 'Sim' : 'Nao' %></td>
+                <td><%= new Date(item.created_at).toLocaleString('pt-BR') %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
