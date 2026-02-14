@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "railway-postgres-form",
   "version": "1.0.0",
   "description": "App simples com login e formulario salvando no PostgreSQL",
