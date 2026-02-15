@@ -62,11 +62,17 @@ async function initDatabase() {
       id SERIAL PRIMARY KEY,
       username TEXT NOT NULL,
       text_value TEXT NOT NULL,
+      pix TEXT,
       number_value INTEGER NOT NULL,
       category_value TEXT NOT NULL,
       accepted_terms BOOLEAN NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE submissions
+    ADD COLUMN IF NOT EXISTS pix TEXT
   `);
 
   await pool.query(`
@@ -175,7 +181,7 @@ app.get("/menu", requireAuth, (req, res) => {
 app.get("/form", requireAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, username, text_value, number_value, category_value, accepted_terms, created_at
+      `SELECT id, username, text_value, pix, number_value, category_value, accepted_terms, created_at
        FROM submissions
        ORDER BY created_at DESC
        LIMIT 50`
@@ -196,14 +202,14 @@ app.get("/form", requireAuth, async (req, res) => {
 });
 
 app.post("/submit", requireAuth, async (req, res) => {
-  const { textValue, numberValue, categoryValue } = req.body;
+  const { textValue, pix, numberValue, categoryValue } = req.body;
   const acceptedTerms = req.body.acceptedTerms === "on";
 
   const parsedNumber = Number.parseInt(numberValue, 10);
 
   if (!textValue || Number.isNaN(parsedNumber) || !categoryValue) {
     const { rows } = await pool.query(
-      `SELECT id, username, text_value, number_value, category_value, accepted_terms, created_at
+      `SELECT id, username, text_value, pix, number_value, category_value, accepted_terms, created_at
        FROM submissions
        ORDER BY created_at DESC
        LIMIT 50`
@@ -217,9 +223,9 @@ app.post("/submit", requireAuth, async (req, res) => {
   }
 
   await pool.query(
-    `INSERT INTO submissions (username, text_value, number_value, category_value, accepted_terms)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [req.session.user.username, textValue, parsedNumber, categoryValue, acceptedTerms]
+    `INSERT INTO submissions (username, text_value, pix, number_value, category_value, accepted_terms)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [req.session.user.username, textValue, pix || null, parsedNumber, categoryValue, acceptedTerms]
   );
 
   return res.redirect("/success");
