@@ -13,10 +13,13 @@
         <h1>Formulario</h1>
         <p>Logado como <strong><%= username %></strong></p>
       </div>
-
-      <form method="POST" action="/logout">
-        <button type="submit" class="secondary">Sair</button>
-      </form>
+      <div class="header-actions">
+        <a href="/menu" class="button-link secondary-link">Menu</a>
+        <a href="/ponto" class="button-link secondary-link">Bater ponto</a>
+        <form method="POST" action="/logout">
+          <button type="submit" class="secondary">Sair</button>
+        </form>
+      </div>
     </header>
 
     <% if (error) { %>

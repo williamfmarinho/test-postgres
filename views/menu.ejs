@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>Menu Principal</h1>
+        <p>Logado como <strong><%= username %></strong></p>
+      </div>
+      <form method="POST" action="/logout">
+        <button type="submit" class="secondary">Sair</button>
+      </form>
+    </header>
+
+    <section class="card">
+      <h2>Escolha um modulo</h2>
+      <div class="menu-grid">
+        <a href="/form" class="menu-link">Formulario</a>
+        <a href="/ponto" class="menu-link">Bater ponto</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bater ponto</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container small">
+    <header class="header">
+      <div>
+        <h1>Bater ponto</h1>
+        <p>Logado como <strong><%= username %></strong></p>
+      </div>
+      <a href="/menu" class="button-link secondary-link">Voltar ao menu</a>
+    </header>
+
+    <% if (message) { %>
+      <p class="success"><%= message %></p>
+    <% } %>
+    <% if (error) { %>
+      <p class="error"><%= error %></p>
+    <% } %>
+
+    <section class="card">
+      <h2>Registro de hoje</h2>
+      <% if (pontoHoje) { %>
+        <p>Voce ja bateu ponto hoje.</p>
+        <ul class="info-list">
+          <li><strong>Data:</strong> <%= new Date(pontoHoje.data).toLocaleDateString('pt-BR') %></li>
+          <li><strong>Horario:</strong> <%= String(pontoHoje.horario).slice(0, 8) %></li>
+          <li><strong>Minuto:</strong> <%= pontoHoje.minuto %></li>
+          <li><strong>Segundo:</strong> <%= pontoHoje.segundo %></li>
+          <li><strong>Local:</strong> <%= pontoHoje.local %></li>
+        </ul>
+      <% } else { %>
+        <p>Voce ainda nao bateu ponto hoje.</p>
+      <% } %>
+
+      <form method="POST" action="/ponto" id="ponto-form">
+        <button type="submit" id="ponto-btn" <%= pontoHoje ? "disabled" : "" %>>
+          Bater ponto
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const form = document.getElementById("ponto-form");
+      const button = document.getElementById("ponto-btn");
+      if (!form || !button || button.disabled) return;
+      form.addEventListener("submit", function () {
+        button.disabled = true;
+        button.textContent = "Registrando...";
+      });
+    })();
+  </script>
+</body>
+</html>

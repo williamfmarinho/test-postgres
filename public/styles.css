@@ -26,6 +26,12 @@ body {
   gap: 16px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .card {
   background: #fff;
   border: 1px solid #d9e0ea;
@@ -76,6 +82,20 @@ button.secondary {
   background: #4e5d78;
 }
 
+.button-link.secondary-link {
+  background: #4e5d78;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.success {
+  color: #1b7f35;
+  font-weight: 600;
+}
+
 .error {
   color: #c62828;
   font-weight: 600;
@@ -100,4 +120,31 @@ td {
   text-align: left;
   padding: 10px;
   font-size: 14px;
+}
+
+.menu-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.menu-link {
+  display: block;
+  text-align: center;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #c7d0dc;
+  text-decoration: none;
+  color: #1d2430;
+  background: #f9fbff;
+  font-weight: 600;
+}
+
+.menu-link:hover {
+  background: #edf3ff;
+}
+
+.info-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
 }
