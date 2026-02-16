@@ -11,7 +11,7 @@
     <header class="header">
       <div>
         <h1>Menu Principal</h1>
-        <p>Logado como <strong><%= username %></strong></p>
+        <p>Logado como <strong><%= username %></strong> (<%= role %>)</p>
       </div>
       <form method="POST" action="/logout">
         <button type="submit" class="secondary">Sair</button>
@@ -23,8 +23,10 @@
       <div class="menu-grid">
         <a href="/form" class="menu-link">Formulario</a>
         <a href="/ponto" class="menu-link">Bater ponto</a>
-        <% if (isAdmin1) { %>
-          <a href="/usuarios/novo" class="menu-link">Criar usuario</a>
+        <a href="/alterar-senha" class="menu-link">Alterar senha</a>
+        <% if (isMaster) { %>
+          <a href="/usuarios/novo" class="menu-link">Gerenciar usuarios</a>
+          <a href="/historico" class="menu-link">Historico do banco</a>
         <% } %>
       </div>
     </section>

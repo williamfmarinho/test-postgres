@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alterar senha</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container small">
+    <header class="header">
+      <div>
+        <h1>Alterar senha</h1>
+        <p>Logado como <strong><%= username %></strong> (<%= role %>)</p>
+      </div>
+      <a href="/menu" class="button-link secondary-link">Voltar ao menu</a>
+    </header>
+
+    <% if (error) { %>
+      <p class="error"><%= error %></p>
+    <% } %>
+    <% if (success) { %>
+      <p class="success"><%= success %></p>
+    <% } %>
+
+    <section class="card">
+      <form method="POST" action="/alterar-senha" class="form-grid">
+        <label>
+          Senha atual
+          <input type="password" name="currentPassword" required />
+        </label>
+
+        <label>
+          Nova senha
+          <input type="password" name="newPassword" required />
+        </label>
+
+        <label>
+          Confirmar nova senha
+          <input type="password" name="confirmPassword" required />
+        </label>
+
+        <button type="submit">Salvar nova senha</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

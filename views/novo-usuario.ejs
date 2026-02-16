@@ -10,8 +10,8 @@
   <main class="container small">
     <header class="header">
       <div>
-        <h1>Novo usuario</h1>
-        <p>Logado como <strong><%= username %></strong> (admin1)</p>
+        <h1>Gerenciar usuarios</h1>
+        <p>Logado como <strong><%= username %></strong> (<%= role %>)</p>
       </div>
       <a href="/menu" class="button-link secondary-link">Voltar ao menu</a>
     </header>
@@ -24,6 +24,7 @@
     <% } %>
 
     <section class="card">
+      <h2>Criar usuario normal</h2>
       <form method="POST" action="/usuarios/novo" class="form-grid">
         <label>
           Novo login
@@ -37,6 +38,48 @@
 
         <button type="submit">Criar usuario</button>
       </form>
+    </section>
+
+    <section class="card">
+      <h2>Usuarios cadastrados</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Usuario</th>
+              <th>Tipo</th>
+              <th>Criado em</th>
+              <th>Acao</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!users.length) { %>
+              <tr>
+                <td colspan="5">Nenhum usuario cadastrado.</td>
+              </tr>
+            <% } %>
+
+            <% users.forEach((item) => { %>
+              <tr>
+                <td><%= item.id %></td>
+                <td><%= item.username %></td>
+                <td><%= item.role %></td>
+                <td><%= new Date(item.created_at).toLocaleString('pt-BR') %></td>
+                <td>
+                  <% if (item.role !== "mestre" && item.username !== "admin1") { %>
+                    <form method="POST" action="/usuarios/excluir/<%= item.id %>" onsubmit="return confirm('Deseja excluir este usuario?');">
+                      <button type="submit" class="danger">Excluir</button>
+                    </form>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
     </section>
   </main>
 </body>

@@ -52,9 +52,15 @@ async function initDatabase() {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
+      role TEXT NOT NULL DEFAULT 'normal',
       password_hash TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'normal'
   `);
 
   await pool.query(`
@@ -93,11 +99,22 @@ async function initDatabase() {
   const admin2Hash = await bcrypt.hash("456", BCRYPT_ROUNDS);
 
   await pool.query(
-    `INSERT INTO users (username, password_hash)
-     VALUES ($1, $2), ($3, $4)
-     ON CONFLICT (username) DO UPDATE
-     SET password_hash = EXCLUDED.password_hash`,
-    ["admin1", admin1Hash, "admin2", admin2Hash]
+    `INSERT INTO users (username, role, password_hash)
+     VALUES ($1, $2, $3), ($4, $5, $6)
+     ON CONFLICT (username) DO NOTHING`,
+    ["admin1", "mestre", admin1Hash, "admin2", "normal", admin2Hash]
+  );
+
+  await pool.query(
+    `UPDATE users
+     SET role = 'mestre'
+     WHERE username = 'admin1'`
+  );
+
+  await pool.query(
+    `UPDATE users
+     SET role = 'normal'
+     WHERE username = 'admin2'`
   );
 }
 
@@ -131,9 +148,9 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function requireAdmin1(req, res, next) {
-  if (!req.session.user || req.session.user.username !== "admin1") {
-    return res.status(403).send("Acesso negado. Apenas admin1 pode acessar esta pagina.");
+function requireMaster(req, res, next) {
+  if (!req.session.user || req.session.user.role !== "mestre") {
+    return res.status(403).send("Acesso negado. Apenas usuario mestre pode acessar esta pagina.");
   }
   next();
 }
@@ -156,7 +173,7 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   const userResult = await pool.query(
-    "SELECT id, username, password_hash FROM users WHERE username = $1",
+    "SELECT id, username, role, password_hash FROM users WHERE username = $1",
     [username]
   );
 
@@ -171,7 +188,7 @@ app.post("/login", async (req, res) => {
     });
   }
 
-  req.session.user = { id: user.id, username: user.username };
+  req.session.user = { id: user.id, username: user.username, role: user.role };
   return res.redirect("/menu");
 });
 
@@ -184,11 +201,21 @@ app.post("/logout", (req, res) => {
 app.get("/menu", requireAuth, (req, res) => {
   res.render("menu", {
     username: req.session.user.username,
-    isAdmin1: req.session.user.username === "admin1",
+    role: req.session.user.role,
+    isMaster: req.session.user.role === "mestre",
   });
 });
 
 app.get("/form", requireAuth, async (req, res) => {
+  if (req.session.user.role !== "mestre") {
+    return res.render("form", {
+      username: req.session.user.username,
+      submissions: [],
+      error: null,
+      canViewHistory: false,
+    });
+  }
+
   try {
     const { rows } = await pool.query(
       `SELECT id, username, text_value, pix, number_value, category_value, accepted_terms, created_at
@@ -201,12 +228,14 @@ app.get("/form", requireAuth, async (req, res) => {
       username: req.session.user.username,
       submissions: rows,
       error: null,
+      canViewHistory: true,
     });
   } catch (error) {
     return res.status(500).render("form", {
       username: req.session.user.username,
       submissions: [],
       error: "Erro ao carregar dados do banco.",
+      canViewHistory: true,
     });
   }
 });
@@ -218,6 +247,15 @@ app.post("/submit", requireAuth, async (req, res) => {
   const parsedNumber = Number.parseInt(numberValue, 10);
 
   if (!textValue || Number.isNaN(parsedNumber) || !categoryValue) {
+    if (req.session.user.role !== "mestre") {
+      return res.status(400).render("form", {
+        username: req.session.user.username,
+        submissions: [],
+        error: "Preencha todos os campos obrigatorios.",
+        canViewHistory: false,
+      });
+    }
+
     const { rows } = await pool.query(
       `SELECT id, username, text_value, pix, number_value, category_value, accepted_terms, created_at
        FROM submissions
@@ -229,6 +267,7 @@ app.post("/submit", requireAuth, async (req, res) => {
       username: req.session.user.username,
       submissions: rows,
       error: "Preencha todos os campos obrigatorios.",
+      canViewHistory: true,
     });
   }
 
@@ -308,57 +347,169 @@ app.get("/success", requireAuth, (req, res) => {
   res.render("success", { username: req.session.user.username });
 });
 
-app.get("/usuarios/novo", requireAuth, requireAdmin1, (req, res) => {
-  return res.render("novo-usuario", {
+app.get("/alterar-senha", requireAuth, (req, res) => {
+  return res.render("alterar-senha", {
     username: req.session.user.username,
+    role: req.session.user.role,
     error: null,
     success: null,
   });
 });
 
-app.post("/usuarios/novo", requireAuth, requireAdmin1, async (req, res) => {
+app.post("/alterar-senha", requireAuth, async (req, res) => {
+  const currentPassword = req.body.currentPassword || "";
+  const newPassword = req.body.newPassword || "";
+  const confirmPassword = req.body.confirmPassword || "";
+
+  const renderResult = (statusCode, error, success) =>
+    res.status(statusCode).render("alterar-senha", {
+      username: req.session.user.username,
+      role: req.session.user.role,
+      error,
+      success,
+    });
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return renderResult(400, "Preencha todos os campos.", null);
+  }
+
+  if (newPassword.length < 3) {
+    return renderResult(400, "A nova senha deve ter pelo menos 3 caracteres.", null);
+  }
+
+  if (newPassword !== confirmPassword) {
+    return renderResult(400, "A confirmacao de senha nao confere.", null);
+  }
+
+  const userResult = await pool.query(
+    "SELECT password_hash FROM users WHERE id = $1",
+    [req.session.user.id]
+  );
+  const dbUser = userResult.rows[0];
+
+  if (!dbUser) {
+    return renderResult(404, "Usuario nao encontrado.", null);
+  }
+
+  const isCurrentPasswordValid = await bcrypt.compare(
+    currentPassword,
+    dbUser.password_hash
+  );
+
+  if (!isCurrentPasswordValid) {
+    return renderResult(401, "Senha atual incorreta.", null);
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+    newPasswordHash,
+    req.session.user.id,
+  ]);
+
+  return renderResult(200, null, "Senha alterada com sucesso.");
+});
+
+app.get("/historico", requireAuth, requireMaster, async (req, res) => {
+  const submissionsResult = await pool.query(
+    `SELECT id, username, text_value, pix, number_value, category_value, accepted_terms, created_at
+     FROM submissions
+     ORDER BY created_at DESC
+     LIMIT 100`
+  );
+  const pontoResult = await pool.query(
+    `SELECT id, username, horario, local, data, minuto, segundo, created_at
+     FROM "registroPonto"
+     ORDER BY created_at DESC
+     LIMIT 100`
+  );
+
+  return res.render("historico", {
+    username: req.session.user.username,
+    role: req.session.user.role,
+    submissions: submissionsResult.rows,
+    registrosPonto: pontoResult.rows,
+  });
+});
+
+app.get("/usuarios/novo", requireAuth, requireMaster, async (req, res) => {
+  const usersResult = await pool.query(
+    "SELECT id, username, role, created_at FROM users ORDER BY id ASC"
+  );
+
+  return res.render("novo-usuario", {
+    username: req.session.user.username,
+    role: req.session.user.role,
+    error: null,
+    success: null,
+    users: usersResult.rows,
+  });
+});
+
+app.post("/usuarios/novo", requireAuth, requireMaster, async (req, res) => {
   const username = (req.body.username || "").trim();
   const password = req.body.password || "";
 
-  if (!username || !password) {
-    return res.status(400).render("novo-usuario", {
+  const renderWithUsers = async (statusCode, error, success) => {
+    const usersResult = await pool.query(
+      "SELECT id, username, role, created_at FROM users ORDER BY id ASC"
+    );
+    return res.status(statusCode).render("novo-usuario", {
       username: req.session.user.username,
-      error: "Preencha usuario e senha.",
-      success: null,
+      role: req.session.user.role,
+      error,
+      success,
+      users: usersResult.rows,
     });
+  };
+
+  if (!username || !password) {
+    return renderWithUsers(400, "Preencha usuario e senha.", null);
   }
 
   if (password.length < 3) {
-    return res.status(400).render("novo-usuario", {
-      username: req.session.user.username,
-      error: "A senha deve ter pelo menos 3 caracteres.",
-      success: null,
-    });
+    return renderWithUsers(400, "A senha deve ter pelo menos 3 caracteres.", null);
   }
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
   try {
     await pool.query(
-      "INSERT INTO users (username, password_hash) VALUES ($1, $2)",
-      [username, passwordHash]
+      "INSERT INTO users (username, role, password_hash) VALUES ($1, $2, $3)",
+      [username, "normal", passwordHash]
     );
   } catch (error) {
     if (error.code === "23505") {
-      return res.status(409).render("novo-usuario", {
-        username: req.session.user.username,
-        error: "Este usuario ja existe.",
-        success: null,
-      });
+      return renderWithUsers(409, "Este usuario ja existe.", null);
     }
     throw error;
   }
 
-  return res.render("novo-usuario", {
-    username: req.session.user.username,
-    error: null,
-    success: `Usuario "${username}" criado com sucesso.`,
-  });
+  return renderWithUsers(200, null, `Usuario "${username}" criado com sucesso.`);
+});
+
+app.post("/usuarios/excluir/:id", requireAuth, requireMaster, async (req, res) => {
+  const userId = Number.parseInt(req.params.id, 10);
+
+  if (Number.isNaN(userId)) {
+    return res.status(400).send("ID de usuario invalido.");
+  }
+
+  const targetResult = await pool.query(
+    "SELECT id, username, role FROM users WHERE id = $1",
+    [userId]
+  );
+  const targetUser = targetResult.rows[0];
+
+  if (!targetUser) {
+    return res.status(404).send("Usuario nao encontrado.");
+  }
+
+  if (targetUser.username === "admin1" || targetUser.role === "mestre") {
+    return res.status(403).send("Usuario mestre nao pode ser excluido.");
+  }
+
+  await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+  return res.redirect("/usuarios/novo");
 });
 
 app.use((err, req, res, next) => {
