@@ -23,6 +23,9 @@
       <div class="menu-grid">
         <a href="/form" class="menu-link">Formulario</a>
         <a href="/ponto" class="menu-link">Bater ponto</a>
+        <% if (isAdmin1) { %>
+          <a href="/usuarios/novo" class="menu-link">Criar usuario</a>
+        <% } %>
       </div>
     </section>
   </main>

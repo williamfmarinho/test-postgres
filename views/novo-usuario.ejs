@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criar usuario</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container small">
+    <header class="header">
+      <div>
+        <h1>Novo usuario</h1>
+        <p>Logado como <strong><%= username %></strong> (admin1)</p>
+      </div>
+      <a href="/menu" class="button-link secondary-link">Voltar ao menu</a>
+    </header>
+
+    <% if (error) { %>
+      <p class="error"><%= error %></p>
+    <% } %>
+    <% if (success) { %>
+      <p class="success"><%= success %></p>
+    <% } %>
+
+    <section class="card">
+      <form method="POST" action="/usuarios/novo" class="form-grid">
+        <label>
+          Novo login
+          <input type="text" name="username" required />
+        </label>
+
+        <label>
+          Nova senha
+          <input type="password" name="password" required />
+        </label>
+
+        <button type="submit">Criar usuario</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

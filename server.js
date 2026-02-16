@@ -131,6 +131,13 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function requireAdmin1(req, res, next) {
+  if (!req.session.user || req.session.user.username !== "admin1") {
+    return res.status(403).send("Acesso negado. Apenas admin1 pode acessar esta pagina.");
+  }
+  next();
+}
+
 app.get("/", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login");
@@ -175,7 +182,10 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/menu", requireAuth, (req, res) => {
-  res.render("menu", { username: req.session.user.username });
+  res.render("menu", {
+    username: req.session.user.username,
+    isAdmin1: req.session.user.username === "admin1",
+  });
 });
 
 app.get("/form", requireAuth, async (req, res) => {
@@ -296,6 +306,59 @@ app.post("/ponto", requireAuth, async (req, res) => {
 
 app.get("/success", requireAuth, (req, res) => {
   res.render("success", { username: req.session.user.username });
+});
+
+app.get("/usuarios/novo", requireAuth, requireAdmin1, (req, res) => {
+  return res.render("novo-usuario", {
+    username: req.session.user.username,
+    error: null,
+    success: null,
+  });
+});
+
+app.post("/usuarios/novo", requireAuth, requireAdmin1, async (req, res) => {
+  const username = (req.body.username || "").trim();
+  const password = req.body.password || "";
+
+  if (!username || !password) {
+    return res.status(400).render("novo-usuario", {
+      username: req.session.user.username,
+      error: "Preencha usuario e senha.",
+      success: null,
+    });
+  }
+
+  if (password.length < 3) {
+    return res.status(400).render("novo-usuario", {
+      username: req.session.user.username,
+      error: "A senha deve ter pelo menos 3 caracteres.",
+      success: null,
+    });
+  }
+
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  try {
+    await pool.query(
+      "INSERT INTO users (username, password_hash) VALUES ($1, $2)",
+      [username, passwordHash]
+    );
+  } catch (error) {
+    if (error.code === "23505") {
+      return res.status(409).render("novo-usuario", {
+        username: req.session.user.username,
+        error: "Este usuario ja existe.",
+        success: null,
+      });
+    }
+    throw error;
+  }
+
+  return res.render("novo-usuario", {
+    username: req.session.user.username,
+    error: null,
+    success: `Usuario "${username}" criado com sucesso.`,
+  });
 });
 
 app.use((err, req, res, next) => {
